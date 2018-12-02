@@ -1334,7 +1334,7 @@ class RustGenerator : public BaseGenerator {
 
       for (auto u_it = u->vals.vec.begin(); u_it != u->vals.vec.end(); ++u_it) {
         auto &ev = **u_it;
-        if (ev.union_type.base_type == BASE_TYPE_STRUCT) {
+        if (ev.union_type.base_type == BASE_TYPE_STRUCT && !ev.union_type.struct_def->fixed) {
           auto table_init_type = WrapInNameSpace(
             ev.union_type.struct_def->defined_namespace,
             ev.union_type.struct_def->name);

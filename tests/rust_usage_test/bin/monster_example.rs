@@ -4,6 +4,9 @@ extern crate flatbuffers;
 mod monster_test_generated;
 pub use monster_test_generated::my_game;
 
+#[path = "../../union_vector/union_vector_generated.rs"]
+mod union_vector_generated;
+
 use std::io::Read;
 
 fn main() {

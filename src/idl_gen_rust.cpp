@@ -1334,29 +1334,31 @@ class RustGenerator : public BaseGenerator {
 
       for (auto u_it = u->vals.vec.begin(); u_it != u->vals.vec.end(); ++u_it) {
         auto &ev = **u_it;
-        if (ev.union_type.base_type == BASE_TYPE_NONE) { continue; }
+        if (ev.union_type.base_type == BASE_TYPE_STRUCT) {
+          auto table_init_type = WrapInNameSpace(
+            ev.union_type.struct_def->defined_namespace,
+            ev.union_type.struct_def->name);
 
-        auto table_init_type = WrapInNameSpace(
-          ev.union_type.struct_def->defined_namespace,
-          ev.union_type.struct_def->name);
+            code_.SetValue("U_ELEMENT_ENUM_TYPE",
+                WrapInNameSpace(u->defined_namespace, GetEnumValUse(*u, ev)));
+          code_.SetValue("U_ELEMENT_TABLE_TYPE", table_init_type);
+          code_.SetValue("U_ELEMENT_NAME", MakeSnakeCase(Name(ev)));
 
-          code_.SetValue("U_ELEMENT_ENUM_TYPE",
-              WrapInNameSpace(u->defined_namespace, GetEnumValUse(*u, ev)));
-        code_.SetValue("U_ELEMENT_TABLE_TYPE", table_init_type);
-        code_.SetValue("U_ELEMENT_NAME", MakeSnakeCase(Name(ev)));
-
-        code_ += "  #[inline]";
-        code_ += "  #[allow(non_snake_case)]";
-        code_ += "  pub fn {{FIELD_NAME}}_as_{{U_ELEMENT_NAME}}(&'a self) -> "
-                 "Option<{{U_ELEMENT_TABLE_TYPE}}> {";
-        code_ += "    if self.{{FIELD_NAME}}_type() == {{U_ELEMENT_ENUM_TYPE}} {";
-        code_ += "      self.{{FIELD_NAME}}().map(|u| "
-                 "{{U_ELEMENT_TABLE_TYPE}}::init_from_table(u))";
-        code_ += "    } else {";
-        code_ += "      None";
-        code_ += "    }";
-        code_ += "  }";
-        code_ += "";
+          code_ += "  #[inline]";
+          code_ += "  #[allow(non_snake_case)]";
+          code_ += "  pub fn {{FIELD_NAME}}_as_{{U_ELEMENT_NAME}}(&'a self) -> "
+                  "Option<{{U_ELEMENT_TABLE_TYPE}}> {";
+          code_ += "    if self.{{FIELD_NAME}}_type() == {{U_ELEMENT_ENUM_TYPE}} {";
+          code_ += "      self.{{FIELD_NAME}}().map(|u| "
+                  "{{U_ELEMENT_TABLE_TYPE}}::init_from_table(u))";
+          code_ += "    } else {";
+          code_ += "      None";
+          code_ += "    }";
+          code_ += "  }";
+          code_ += "";
+        } else {
+          // FIXME: Do we need to support other types here?
+        }
       }
     }
 

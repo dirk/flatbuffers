@@ -89,7 +89,8 @@ enum FullType {
   ftVectorOfStruct = 13,
   ftVectorOfTable = 14,
   ftVectorOfString = 15,
-  ftVectorOfUnionValue = 16,
+  ftVectorOfUnionKey = 16,
+  ftVectorOfUnionValue = 17,
 };
 
 // Convert a Type to a FullType (exhaustive).
@@ -127,9 +128,11 @@ FullType GetFullType(const Type &type) {
       case ftEnumKey: {
         return ftVectorOfEnumKey;
       }
-      case ftUnionKey:
+      case ftUnionKey: {
+        return ftVectorOfUnionKey;
+      }
       case ftUnionValue: {
-        FLATBUFFERS_ASSERT(false && "vectors of unions are unsupported");
+        return ftVectorOfUnionValue;
       }
       default: {
         FLATBUFFERS_ASSERT(false && "vector of vectors are unsupported");
@@ -819,12 +822,15 @@ class RustGenerator : public BaseGenerator {
                lifetime + ", flatbuffers::ForwardsUOffset<&" + lifetime + \
                " str>>>>";
       }
+      case ftVectorOfUnionKey: {
+        const auto typname = WrapInNameSpace(*type.enum_def);
+        return "Option<flatbuffers::WIPOffset<flatbuffers::Vector<" + \
+               lifetime + ", " + typname + ">>>";
+      }
       case ftVectorOfUnionValue: {
-        const auto typname = WrapInNameSpace(*type.enum_def) + \
-                             "UnionTableOffset";
         return "Option<flatbuffers::WIPOffset<flatbuffers::Vector<" + \
                lifetime + ", flatbuffers::ForwardsUOffset<"
-               "flatbuffers::Table<" + lifetime + ">>>>";
+               "flatbuffers::Table<" + lifetime + ">>>>>";
       }
     }
     return "INVALID_CODE_GENERATION"; // for return analysis
@@ -880,11 +886,15 @@ class RustGenerator : public BaseGenerator {
         return "flatbuffers::WIPOffset<flatbuffers::Vector<" + lifetime + \
                ", " + typname + ">>";
       }
+      case ftVectorOfUnionKey: {
+        const auto typname = WrapInNameSpace(*type.enum_def);
+        return "flatbuffers::WIPOffset<flatbuffers::Vector<" + typname + ">>";
+      }
       case ftVectorOfUnionValue: {
         const auto typname = WrapInNameSpace(*type.enum_def);
         return "flatbuffers::WIPOffset<flatbuffers::Vector<" + lifetime + \
                ", flatbuffers::ForwardsUOffset<flatbuffers::Table<" + \
-               lifetime + ">>>";
+               lifetime + ">>>>";
       }
       case ftEnumKey: {
         const auto typname = WrapInNameSpace(*type.enum_def);
@@ -960,6 +970,7 @@ class RustGenerator : public BaseGenerator {
       case ftVectorOfStruct:
       case ftVectorOfTable:
       case ftVectorOfString:
+      case ftVectorOfUnionKey:
       case ftVectorOfUnionValue: {
         return "self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>";
       }
@@ -1028,11 +1039,14 @@ class RustGenerator : public BaseGenerator {
         return WrapInOptionIfNotRequired("flatbuffers::Vector<flatbuffers::ForwardsUOffset<&" + \
                lifetime + " str>>", field.required);
       }
+      case ftVectorOfUnionKey: {
+        const auto typname = WrapInNameSpace(*type.enum_def);
+        return WrapInOptionIfNotRequired("flatbuffers::Vector<flatbuffers::ForwardsUOffset<" + \
+               typname + ">>", field.required);
+      }
       case ftVectorOfUnionValue: {
-        FLATBUFFERS_ASSERT(false && "vectors of unions are not yet supported");
-        // TODO(rw): when we do support these, we should consider using the
-        //           Into trait to convert tables to typesafe union values.
-        return "INVALID_CODE_GENERATION"; // for return analysis
+        const auto typname = WrapInNameSpace(*type.enum_def);
+        return WrapInOptionIfNotRequired("flatbuffers::Vector<flatbuffers::ForwardsUOffset<" + typname + ">>", field.required);
       }
     }
     return "INVALID_CODE_GENERATION"; // for return analysis
@@ -1121,9 +1135,17 @@ class RustGenerator : public BaseGenerator {
                "flatbuffers::Vector<flatbuffers::ForwardsUOffset<&" + \
                lifetime + " str>>>>(" + offset_name + ", None)", field.required);
       }
+      case ftVectorOfUnionKey: {
+        const auto typname = WrapInNameSpace(*type.enum_def);
+        return AddUnwrapIfRequired("self._tab.get::<flatbuffers::ForwardsUOffset<"
+               "flatbuffers::Vector<" + lifetime + ", " + typname + ">>>(" + \
+               offset_name + ", None)", field.required);
+      }
       case ftVectorOfUnionValue: {
-        FLATBUFFERS_ASSERT(false && "vectors of unions are not yet supported");
-        return "INVALID_CODE_GENERATION"; // for return analysis
+        const auto typname = WrapInNameSpace(*type.enum_def);
+        return AddUnwrapIfRequired("self._tab.get::<flatbuffers::ForwardsUOffset<"
+               "flatbuffers::Vector<flatbuffers::ForwardsUOffset<" + typname + \
+               "<" + lifetime + ">>>>>(" + offset_name + ", None)", field.required);
       }
     }
     return "INVALID_CODE_GENERATION"; // for return analysis
